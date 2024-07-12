@@ -195,3 +195,24 @@ bool achordion_chord(uint16_t tap_hold_keycode, keyrecord_t* tap_hold_record,
     return achordion_opposite_hands(tap_hold_record, other_record);
 }
 
+bool is_layout_toggle(uint16_t keycode) {
+    return keycode == NORMAL ||
+    keycode == NORMAL_HOLD || 
+    keycode == FUNC ||
+    keycode == FUNC_HOLD ||
+    keycode == NAS;
+}
+
+static struct layer_toggle_to_indicator {
+    [NORMAL]: X_F13,
+    [NORMAL_HOLD]: X_F14
+    // TODO finish mapping 
+}
+
+bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+    if (is_layout_toggle(keycode) && record->event.pressed) {
+        // TODO send a "service" keycode to the macos app (layer indicator, mac os topbar extention)
+    }
+
+    return true;
+}
