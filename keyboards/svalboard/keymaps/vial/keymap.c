@@ -203,15 +203,29 @@ bool is_layout_toggle(uint16_t keycode) {
     keycode == NAS;
 }
 
-static struct layer_toggle_to_indicator {
-    [NORMAL]: X_F13,
-    [NORMAL_HOLD]: X_F14
-    // TODO finish mapping 
+int layer_toggle_to_indicator(uint16_t keycode) {
+    switch(keycode) {
+        case NORMAL:
+            return X_13;
+        case NORMAL_HOLD:
+            return X_14;
+        case FUNC:
+            return X_15;
+        case FUNC_HOLD:
+            return X_16;
+        case NAS:
+            return X_17;
+        default:
+            return -1;
+    }
 }
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (is_layout_toggle(keycode) && record->event.pressed) {
-        // TODO send a "service" keycode to the macos app (layer indicator, mac os topbar extention)
+        int indicator = layer_toggle_to_indicator(keycode);
+        if (indicator > -1) {
+            SEND_STRING(SS_TAP(indicator));
+        }
     }
 
     return true;
