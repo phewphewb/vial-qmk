@@ -31,6 +31,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //#define DEBUG_MATRIX_SCAN_RATE
 #define EECONFIG_KB_DATA_SIZE 5
 
+
+#define FLASH_LEN (16 * 1024 * 1024)
+#define WEAR_LEVELING_BACKING_SIZE (128 * 1024)
 // wiring of each half
 //Layout for svalboard v0 (different from lalboard_v2)
 //1 2 3 4 5 6
@@ -41,6 +44,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //#define THUMB_DOWN_ACTIVE_DARK
 
 #define MATRIX_COL_PUSHED_STATES { 0, 0, 1, 0, 0, 0 }
+#ifdef THUMB_DOWN_ACTIVE_DARK
+    #define MATRIX_COL_PUSHED_STATES_THUMBS { 0, 0, 1, 0, 0, 0 }
+#else
+    #define MATRIX_COL_PUSHED_STATES_THUMBS { 0, 0, 0, 0, 0, 0 }
+#endif
 #define DOUBLEDOWN_COL 5 // need a pullup on COL6
 #define PREWAIT_US 90
 #define POSTWAIT_US 90
@@ -49,11 +57,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define RP2040_BOOTLOADER_DOUBLE_TAP_RESET
 #define RP2040_BOOTLOADER_DOUBLE_TAP_RESET_TIMEOUT 500 // Timeout window in ms in which the double tap can occur.
 
-#define DYNAMIC_KEYMAP_LAYER_COUNT 16
 #define VIAL_TAP_DANCE_ENTRIES 50
 #define VIAL_TAP_COMBO_ENTRIES 50
 #define VIAL_COMBO_ENTRIES 50
-#define VIAL_KEY_OVERRIDE_ENTRIES 10
+#define VIAL_KEY_OVERRIDE_ENTRIES 30
 #define DYNAMIC_KEYMAP_MACRO_COUNT 50
 
 #define USB_MAX_POWER_CONSUMPTION 500
@@ -81,7 +88,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define RGBLIGHT_LAYERS DYNAMIC_KEYMAP_LAYER_COUNT
 #define RGBLIGHT_DEFAULT_SAT 0 // white?
 #define RGBLIGHT_LIMIT_VAL 255
-#define RGBLIGHT_DEFAULT_VAL 20
+#define RGBLIGHT_DEFAULT_VAL 128
 #define RGBLIGHT_SLEEP // don't annoy when host asleep
 #define RGBLIGHT_MAX_LAYERS 16 //DYNAMIC_KEYMAP_LAYER_COUNT
 #define RGBLIGHT_VAL_STEP 10

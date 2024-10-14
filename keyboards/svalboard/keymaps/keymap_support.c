@@ -22,10 +22,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "features/achordion.h"
 #include "keymap_support.h"
 
-const uint16_t mh_timer_choices[] = { 300, 500, -1}; // -1 is infinite.
-
-#define PS2_MOUSE_SCROLL_BTN_MASK (1<<PS2_MOUSE_BTN_MIDDLE) // this mask disables the key for non-PS2 purposes
-
 // in keymap.c:
 #ifdef POINTING_DEVICE_AUTO_MOUSE_ENABLE
 void pointing_device_init_user(void) {
@@ -34,8 +30,7 @@ void pointing_device_init_user(void) {
 }
 #endif
 
-
-#if (defined MH_AUTO_BUTTONS && defined PS2_MOUSE_ENABLE && defined MOUSEKEY_ENABLE)  || defined(POINTING_DEVICE_AUTO_MOUSE_MH_ENABLE)
+#if (defined MH_AUTO_BUTTONS && defined PS2_MOUSE_ENABLE && defined MOUSEKEY_ENABLE) || defined(POINTING_DEVICE_AUTO_MOUSE_MH_ENABLE)
 
 static uint16_t mh_auto_buttons_timer;
 extern int tp_buttons; // mousekey button state set in action.c and used in ps2_mouse.c
@@ -76,7 +71,7 @@ report_mouse_t pointing_device_task_combined_user(report_mouse_t reportMouse1, r
             _ds_l_x -= div_x * SCROLL_DIVISOR;
         }
 
-        if  (div_y != 0) {
+        if (div_y != 0) {
             reportMouse1.v += div_y;
             _ds_l_y -= div_y * SCROLL_DIVISOR;
         }
@@ -100,7 +95,7 @@ report_mouse_t pointing_device_task_combined_user(report_mouse_t reportMouse1, r
             _ds_r_x -= div_x * SCROLL_DIVISOR;
         }
 
-        if  (div_y != 0) {
+        if (div_y != 0) {
             reportMouse2.v += div_y;
             _ds_r_y -= div_y * SCROLL_DIVISOR;
         }
@@ -154,7 +149,7 @@ report_mouse_t pointing_device_task_user(report_mouse_t reportMouse) {
             snipe_x -= div_x * snipe_div;
         }
 
-        if  (div_y != 0) {
+        if (div_y != 0) {
             reportMouse.y = div_y;
             snipe_y -= div_y * snipe_div;
         }
@@ -164,12 +159,12 @@ report_mouse_t pointing_device_task_user(report_mouse_t reportMouse) {
 #endif
 
 void mh_change_timeouts(void) {
-    if (sizeof(mh_timer_choices)/sizeof(int16_t) - 1 <= global_saved_values.mh_timer_index) {
+    if (sizeof(mh_timer_choices) / sizeof(int16_t) - 1 <= global_saved_values.mh_timer_index) {
         global_saved_values.mh_timer_index = 0;
     } else {
         global_saved_values.mh_timer_index++;
     }
-    uprintf("mh_timer:%d\n",mh_timer_choices[global_saved_values.mh_timer_index]);
+    uprintf("mh_timer:%d\n", mh_timer_choices[global_saved_values.mh_timer_index]);
     write_eeprom_kb();
 }
 
@@ -192,7 +187,10 @@ void check_layer_67(void) {
 bool in_mod_tap = false;
 int8_t in_mod_tap_layer = -1;
 bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
-    if (!global_saved_values.disable_achordion && !process_achordion(keycode, record)) { return false; }
+
+    // Abort additional processing if userspace code did
+    if (!process_record_user(keycode, record)) { return false;}
+    if (!in_mod_tap && !global_saved_values.disable_achordion && !process_achordion(keycode, record)) { return false; }
 
     // We are in a mod tap, with a KC_TRANSPARENT, lets make it transparent...
     if (IS_QK_MOD_TAP(keycode) && ((keycode & 0xFF) == KC_TRANSPARENT) &&
@@ -202,11 +200,9 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
         in_mod_tap_layer = get_highest_layer(layer_state);
         layer_state = layer_state & ~(1 << in_mod_tap_layer);
 
-        action_exec(record->event);
-
         in_mod_tap = true;
 
-        return false;
+        return true;
     }
 
     // Fix things up on the release for the mod_tap case.
@@ -214,13 +210,14 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
         in_mod_tap = false;
         layer_state = layer_state | (1 << in_mod_tap_layer);
         in_mod_tap_layer = -1;
+        return true;
     }
+
     // If console is enabled, it will print the matrix position and status of each key pressed
 #ifdef CONSOLE_ENABLE
     uprintf("KL: kc: 0x%04X, col: %2u, row: %2u, pressed: %u, time: %5u, int: %u, count: %u\n", keycode, record->event.key.col, record->event.key.row, record->event.pressed, record->event.time, record->tap.interrupted, record->tap.count);
 #endif
 
-#if (defined MH_AUTO_BUTTONS && defined PS2_MOUSE_ENABLE && defined MOUSEKEY_ENABLE) || defined(POINTING_DEVICE_AUTO_MOUSE_MH_ENABLE)
     if (mh_auto_buttons_timer) {
         switch (keycode) {
             case KC_BTN1:
@@ -251,117 +248,119 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
                 break;
             default:
 #ifdef CONSOLE_ENABLE
-                uprintf("process_record: off\n");
+                uprintf("process_record - mh_auto_buttons: off\n");
 #endif
                 mouse_mode(false);
         }
     }
     if (record->event.pressed) { // key pressed
         switch (keycode) {
-            case SV_LEFT_SCROLL_HOLD:
-		left_scroll_hold = true;
-                break;
-            case SV_RIGHT_SCROLL_HOLD:
-		right_scroll_hold = true;
-                break;
+            case SV_LEFT_DPI_INC:
+                increase_left_dpi();
+                return false;
+            case SV_LEFT_DPI_DEC:
+                decrease_left_dpi();
+                return false;
+            case SV_RIGHT_DPI_INC:
+                increase_right_dpi();
+                return false;
+            case SV_RIGHT_DPI_DEC:
+                decrease_right_dpi();
+                return false;
+            case SV_LEFT_SCROLL_TOGGLE:
+                global_saved_values.left_scroll = !global_saved_values.left_scroll;
+                write_eeprom_kb();
+                return false;
+            case SV_RIGHT_SCROLL_TOGGLE:
+                global_saved_values.right_scroll = !global_saved_values.right_scroll;
+                write_eeprom_kb();
+                return false;
+            case SV_RECALIBRATE_POINTER:
+                recalibrate_pointer();
+                return false;
+            case SV_MH_CHANGE_TIMEOUTS:
+                mh_change_timeouts();
+                return false;
+            case SV_CAPS_WORD:
+                caps_word_toggle();
+                return false;
+            case SV_TOGGLE_ACHORDION:
+                toggle_achordion();
+                return false;
             case SV_TOGGLE_23_67:
                 layer_on(2);
                 layer_on(3);
                 check_layer_67();
-                break;
+                return false;
             case SV_TOGGLE_45_67:
                 layer_on(4);
                 layer_on(5);
                 check_layer_67();
-                break;
+                return false;
             case SV_SNIPER_2:
                 snipe_x *= 2;
                 snipe_y *= 2;
                 snipe_div *= 2;
-                break;
+                return false;
             case SV_SNIPER_3:
                 snipe_div *= 3;
                 snipe_x *= 3;
                 snipe_y *= 3;
-                break;
+                return false;
             case SV_SNIPER_5:
                 snipe_div *= 5;
                 snipe_x *= 5;
                 snipe_y *= 5;
-                break;
+                return false;
+            case SV_LEFT_SCROLL_HOLD:
+                left_scroll_hold = true;
+                return false;
+            case SV_RIGHT_SCROLL_HOLD:
+                right_scroll_hold = true;
+                return false;
+            case SV_OUTPUT_STATUS:
+                output_keyboard_info();
+                return false;
         }
     } else { // key released
         switch (keycode) {
-            case SV_LEFT_DPI_INC:
-                increase_left_dpi();
-                break;
-            case SV_LEFT_DPI_DEC:
-                decrease_left_dpi();
-                break;
-            case SV_RIGHT_DPI_INC:
-                increase_right_dpi();
-                break;
-            case SV_RIGHT_DPI_DEC:
-                decrease_right_dpi();
-                break;
-            case SV_LEFT_SCROLL_TOGGLE:
-                global_saved_values.left_scroll = !global_saved_values.left_scroll;
-                write_eeprom_kb();
-                break;
-            case SV_RIGHT_SCROLL_TOGGLE:
-                global_saved_values.right_scroll = !global_saved_values.right_scroll;
-                write_eeprom_kb();
-                break;
-	    case SV_LEFT_SCROLL_HOLD:
-		left_scroll_hold = false;
-                break;
-	    case SV_RIGHT_SCROLL_HOLD:
-		right_scroll_hold = false;
-                break;
-            case SV_RECALIBRATE_POINTER:
-                recalibrate_pointer();
-                break;
-            case SV_MH_CHANGE_TIMEOUTS:
-                mh_change_timeouts();
-                break;
-            case SV_CAPS_WORD:
-                caps_word_toggle();
-                break;
-            case SV_TOGGLE_ACHORDION:
-                toggle_achordion();
-                break;
+            // These keys are all holds and require un-setting upon release.
             case SV_TOGGLE_23_67:
                 layer_off(2);
                 layer_off(3);
                 check_layer_67();
-                break;
+                return false;
             case SV_TOGGLE_45_67:
                 layer_off(4);
                 layer_off(5);
                 check_layer_67();
-                break;
+                return false;
             case SV_SNIPER_2:
                 snipe_div /= 2;
                 snipe_x /= 2;
                 snipe_y /= 2;
-                break;
+                return false;
             case SV_SNIPER_3:
                 snipe_div /= 3;
                 snipe_x /= 3;
                 snipe_y /= 3;
-                break;
+                return false;
             case SV_SNIPER_5:
                 snipe_div /= 5;
                 snipe_x /= 5;
                 snipe_y /= 5;
-                break;
-            default:
-                break;
+                return false;
+            case SV_LEFT_SCROLL_HOLD:
+                left_scroll_hold = false;
+                return false;
+            case SV_RIGHT_SCROLL_HOLD:
+                right_scroll_hold = false;
+                return false;
         }
     }
-#endif
 
-    return process_record_user(keycode, record);
+    // Neither the user nor the keyboard handled the event, so continue with normal handling
+    return true;
 };
 
 #if defined MH_AUTO_BUTTONS && defined PS2_MOUSE_ENABLE && defined MOUSEKEY_ENABLE
@@ -379,18 +378,12 @@ void ps2_mouse_moved_user(report_mouse_t *mouse_report) {
 }
 #endif
 
-
-
-#if (defined MH_AUTO_BUTTONS && defined PS2_MOUSE_ENABLE && defined MOUSEKEY_ENABLE) || defined(POINTING_DEVICE_AUTO_MOUSE_MH_ENABLE)
 void matrix_scan_kb(void) {
     if (!global_saved_values.disable_achordion) {
         achordion_task();
     }
 
-    if (mh_timer_choices[global_saved_values.mh_timer_index] < 0) {
-        return;
-    }
-    if (mh_auto_buttons_timer && (timer_elapsed(mh_auto_buttons_timer) > mh_timer_choices[global_saved_values.mh_timer_index])) {
+    if ((mh_timer_choices[global_saved_values.mh_timer_index] >= 0) && mh_auto_buttons_timer && (timer_elapsed(mh_auto_buttons_timer) > mh_timer_choices[global_saved_values.mh_timer_index])) {
         if (!tp_buttons) {
             mouse_mode(false);
 #if defined CONSOLE_ENABLE
@@ -398,6 +391,7 @@ void matrix_scan_kb(void) {
 #endif
         }
     }
+
     matrix_scan_user();
 }
 
@@ -410,5 +404,3 @@ void mouse_mode(bool on) {
         mh_auto_buttons_timer = 0;
     }
 }
-
-#endif // defined MH_AUTO_BUTTONS && defined PS2_MOUSE_ENABLE && #defined MOUSEKEY_ENABLE

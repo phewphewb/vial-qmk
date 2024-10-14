@@ -1,5 +1,5 @@
 /*
-Copyright 2011,2013 Jun Wako <wakojun@gmail.com>
+nCopyright 2011,2013 Jun Wako <wakojun@gmail.com>
 Copyright 2023 Johannes H. Jensen <joh@pseudoberries.com>
 
 This program is free software: you can redistribute it and/or modify
@@ -77,8 +77,8 @@ report_mouse_t ps2_mouse_get_report(report_mouse_t mouse_report) {
         ps2_report.z = ps2_host_recv_response();
 #    endif
     } else {
-        pd_dprintf("ps2_mouse: fail to get mouse packet\n");
-    }
+        pdprint("ps2_mouse: fail to get mouse packet\n");
+      }
 #else
     /* Streaming mode */
     if (pbuf_has_data()) {
