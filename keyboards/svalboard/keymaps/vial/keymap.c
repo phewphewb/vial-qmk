@@ -30,6 +30,18 @@ layer_state_t default_layer_state_set_user(layer_state_t state) {
 
 layer_state_t layer_state_set_user(layer_state_t state) {
   sval_set_active_layer(get_highest_layer(state), false);
+
+  int cur_layer = get_highest_layer(state);
+  if (cur_layer == 0) {
+    SEND_STRING(SS_TAP(X_F16));
+  }
+  if (cur_layer == 1) {
+    SEND_STRING(SS_TAP(X_F17));
+  } 
+  if (cur_layer == 4) {
+    SEND_STRING(SS_TAP(X_F18));
+  }
+
   return state;
 }
 
@@ -142,46 +154,4 @@ bool achordion_chord(uint16_t tap_hold_keycode, keyrecord_t* tap_hold_record,
     }
 
     return achordion_opposite_hands(tap_hold_record, other_record);
-}
-
-void keyboard_post_init_user(void) {
-  // Customise these values if you need to debug the matrix
-  //debug_enable=true;
-  //debug_matrix=true;
-  //debug_keyboard=true;
-  //debug_mouse=true;
-
-#if __has_include("keymap_all.h")
-  if (fresh_install) {
-    sval_init_defaults();
-  }
-#endif
-}
-
-int layer_toggle_to_indicator(uint16_t keycode) {
-    switch(keycode) {
-        case NORMAL:
-            return X_13;
-        case NORMAL_HOLD:
-            return X_14;
-        case FUNC:
-            return X_15;
-        case FUNC_HOLD:
-            return X_16;
-        case NAS:
-            return X_17;
-        default:
-            return -1;
-    }
-}
-
-bool process_record_user(uint16_t keycode, keyrecord_t *record) {
-    if (is_layout_toggle(keycode) && record->event.pressed) {
-        int indicator = layer_toggle_to_indicator(keycode);
-        if (indicator > -1) {
-            SEND_STRING(SS_TAP(indicator));
-        }
-    }
-
-    return true;
 }
