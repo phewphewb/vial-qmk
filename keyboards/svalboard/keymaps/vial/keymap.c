@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdbool.h>
 #include <stdint.h>
 #include "svalboard.h"
+#include "raw_hid.h"
 
 layer_state_t default_layer_state_set_user(layer_state_t state) {
   sval_set_active_layer(0, false);
@@ -29,18 +30,12 @@ layer_state_t default_layer_state_set_user(layer_state_t state) {
 }
 
 layer_state_t layer_state_set_user(layer_state_t state) {
-  sval_set_active_layer(get_highest_layer(state), false);
-
-  int cur_layer = get_highest_layer(state);
-  if (cur_layer == 0) {
-    SEND_STRING(SS_TAP(X_F16));
-  }
-  if (cur_layer == 1) {
-    SEND_STRING(SS_TAP(X_F17));
-  } 
-  if (cur_layer == 4) {
-    SEND_STRING(SS_TAP(X_F18));
-  }
+  uint8_t highest_level = get_highest_layer(state);
+  sval_set_active_layer(highest_level, false);
+  uint8_t buffer[32];
+  memset(buffer, 0, 32);
+  buffer[0] = highest_level;
+  raw_hid_send(buffer, 32);
 
   return state;
 }
