@@ -5,7 +5,7 @@ static bool keybard_active = false;
 
 bool get_is_keybard_active(void) {
     if (keybard_active && timer_elapsed(last_refresh_time) > REFRESH_TIMEOUT_MS) {
-        keybard_active = false
+        keybard_active = false;
         last_refresh_time = 0;
     }
 
