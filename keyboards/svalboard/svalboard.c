@@ -2,6 +2,8 @@
 #include "eeconfig.h"
 #include "version.h"
 #include "split_common/transactions.h"
+#include "keybard.h"
+#include "layout_indicator.h"
 
 saved_values_t global_saved_values;
 const int16_t mh_timer_choices[4] = { 300, 500, 800, -1 }; // -1 is infinite.
@@ -149,6 +151,13 @@ void sval_set_active_layer(uint32_t layer, bool save) {
     } else {
         rgblight_sethsv_noeeprom(cols.hue, cols.sat, rgblight_get_val()); //reuse currrent brightness
     }
+    if (!get_is_keybard_active() && get_is_layout_indicator_active()) {
+        uint8_t buffer[RAW_EPSIZE] = {0};
+        buffer[0] = SVAL_ACTIVE_LAYER_INDICATOR;
+        buffer[1] = active_layer_push;
+        buffer[2] = layer;
+        raw_hid_send(buffer, RAW_EPSIZE);
+    }
 }
 
 // VIAL SPECIFIC FOR SVALBOARD + KEYBARD
@@ -197,45 +206,60 @@ void housekeeping_task_kb(void) {
 void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
     // raw_hid_receive_kb uses data for both input and output.
     // If a command code is unknown, it is simply echoed back.
+    // Parameters start at data[2].
     struct layer_hsv *cols;
     uint8_t layer;
-    if (data[0] != SVAL_VIA_PREFIX) return;
-    switch (data[1]) {
-        case sval_id_get_protocol_version:
-            data[0] = 's';
-            data[1] = 'v';
-            data[2] = 'a';
-            data[3] = 'l';
-            data[4] = SVAL_PROTO_VERSION & 0xFF;
-            data[5] = (SVAL_PROTO_VERSION >> 8) & 0xFF;
-            data[6] = (SVAL_PROTO_VERSION >> 16) & 0xFF;
-            data[7] = (SVAL_PROTO_VERSION >> 24) & 0xFF;
-            break;
-        case sval_id_get_firmware_version:
-            snprintf((char *) data, length, "%s", QMK_VERSION);
-            break;
-        case sval_id_get_layer_hsv:
-            layer = data[2];
-            if (layer > 15) layer = 15;
-            cols = &global_saved_values.layer_colors[layer];
-            data[0] = cols->hue;
-            data[1] = cols->sat;
-            data[2] = cols->val;
-            break;
-        case sval_id_set_layer_hsv:
-            // Parameters start at data[2].
-            layer = data[2];
-            if (layer > 15) layer = 15;
-            cols = &global_saved_values.layer_colors[layer];
-            if (cols->hue != data[3] || cols->sat != data[4] || cols->val != data[5]) {
-                cols->hue = data[3];
-                cols->sat = data[4];
-                cols->val = data[5];
-                write_eeprom_kb();
-            }
-            sval_set_active_layer(sval_active_layer, false);
-            break;
-    }
+    if (data[0] == SVAL_VIA_PREFIX) {
+        refresh_keybard_active_timer();
+
+        switch (data[1]) {
+            case sval_id_get_protocol_version:
+                data[0] = 's';
+                data[1] = 'v';
+                data[2] = 'a';
+                data[3] = 'l';
+                data[4] = SVAL_PROTO_VERSION & 0xFF;
+                data[5] = (SVAL_PROTO_VERSION >> 8) & 0xFF;
+                data[6] = (SVAL_PROTO_VERSION >> 16) & 0xFF;
+                data[7] = (SVAL_PROTO_VERSION >> 24) & 0xFF;
+                break;
+            case sval_id_get_firmware_version:
+                snprintf((char *) data, length, "%s", QMK_VERSION);
+                break;
+            case sval_id_get_layer_hsv:
+                layer = data[2];
+                if (layer > 15) layer = 15;
+                cols = &global_saved_values.layer_colors[layer];
+                data[0] = cols->hue;
+                data[1] = cols->sat;
+                data[2] = cols->val;
+                break;
+            case sval_id_set_layer_hsv:
+                layer = data[2];
+                if (layer > 15) layer = 15;
+                cols = &global_saved_values.layer_colors[layer];
+                if (cols->hue != data[3] || cols->sat != data[4] || cols->val != data[5]) {
+                    cols->hue = data[3];
+                    cols->sat = data[4];
+                    cols->val = data[5];
+                    write_eeprom_kb();
+                }
+                sval_set_active_layer(sval_active_layer, false);
+                break;
+        }
+    } else if (data[0] == SVAL_ACTIVE_LAYER_INDICATOR) {
+        switch(data[1]) {
+            case active_layer_refresh:
+                if (!get_is_keybard_active()) {
+                    refresh_layout_indicator_timer();
+                    data[2] = 1;
+                } else {
+                    data[2] = 0;
+                    disable_layout_indicator();
+                }
+                break;
+        }
+    } 
 }
 
 void sval_on_reconnect(void) {
