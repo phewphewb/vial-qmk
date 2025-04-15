@@ -1,3 +1,5 @@
+#pragma once
+
 #include "quantum.h"
 
 #define SVAL_ACTIVE_LAYER_INDICATOR 0xA5
