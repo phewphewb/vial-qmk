@@ -44,6 +44,7 @@ struct __attribute__((__packed__)) saved_values {
 #define SVAL_PROTO_VERSION 3
 
 #define SVAL_VIA_PREFIX 0xEE
+#define RAW_EPSIZE 32
 
 enum sval_command_ids {
     sval_id_get_protocol_version                 = 0x01,
