@@ -1,3 +1,5 @@
+#pragma once
+
 #include "quantum.h"
 
 #define REFRESH_TIMEOUT_MS 30000  // Client must refresh every 30 seconds
