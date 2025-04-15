@@ -2,6 +2,7 @@
 #include "eeconfig.h"
 #include "version.h"
 #include "split_common/transactions.h"
+#include "raw_hid.h"
 #include "keybard.h"
 #include "layout_indicator.h"
 
